@@ -1,4 +1,6 @@
 from PIL import Image
+import numpy as np
+
 def analyseImage(im):
     '''
     Pre-process pass over the image to determine the mode (full or additive).
