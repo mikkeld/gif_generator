@@ -1,5 +1,55 @@
 from PIL import Image
 import numpy as np
+import urllib
+import json
+from scipy.misc import imresize
+
+
+# sudo pip install http://effbot.org/media/downloads/Imaging-1.1.7.tar.gz
+# http://pillow.readthedocs.io/en/3.4.x/reference/Image.html
+
+def save_files(json_data, search_term, image_type='fixed_width_small'):
+    """Downloads and saves gifs.
+
+    Downloads gifs via giphy url. Saves downloaded gifs to folder gifs/
+
+    Args:
+        json_data (json): gify's api response.
+        search_term (str): which term was used to search for gifs.
+        image_type (str): gifys's response includes multiple gif formats.
+            image_type can be one of these:
+            fixed_height_still
+            fixed_width_small
+            fixed_width_small_still
+            preview_webp
+            fixed_height
+            fixed_height_small_still
+            480w_still
+            downsized_medium
+            preview
+            preview_gif
+            fixed_height_small
+            fixed_width
+            fixed_width_downsampled
+            original_still
+            fixed_height_downsampled
+            downsized_small
+            original_mp4
+            downsized_still
+            looping
+            downsized_large
+            fixed_width_still
+            downsized
+            original
+    """
+    for idx, gif in enumerate(json_data['data']):
+        file_path = gif['images'][image_type]['url']
+        if len(file_path) > 0:
+            file = urllib.urlopen(file_path)
+            path = 'gifs/{}_{}.gif'.format(search_term,idx)
+            with open(path,'wb') as output:
+                output.write(file.read())
+
 
 def analyseImage(im):
     '''
@@ -63,11 +113,15 @@ def getFrames(im):
         pass
 
 
-def processImage(path):
+def processImage(path, reshape_to_vgg=False):
     im = Image.open(path)
     frames = []
     for (i, frame) in enumerate(getFrames(im)):
         #print("saving %s frame %d, %s %s" % (path, i, im.size, im.tile))
-        frames.append(np.asarray(frame))
+        if reshape_to_vgg:
+            frames.append(
+                imresize(np.asarray(frame)[:,:,[0,1,2]],[224,224,3]))
+        else:
+            frames.append(np.asarray(frame))
         #frame.save('%s-%d.png' % (''.join(os.path.basename(path).split('.')[:-1]), i), 'PNG')
     return frames
