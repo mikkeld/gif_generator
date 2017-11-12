@@ -124,4 +124,4 @@ def processImage(path, reshape_to_vgg=False):
         else:
             frames.append(np.asarray(frame))
         #frame.save('%s-%d.png' % (''.join(os.path.basename(path).split('.')[:-1]), i), 'PNG')
-    return frames
+    return np.array(frames)
