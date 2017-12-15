@@ -94,9 +94,9 @@ def getFrames(im):
             '''
             if not im.getpalette():
                 im.putpalette(p)
- 
+
             new_frame = Image.new('RGBA', im.size)
- 
+
             '''
             Is this file a "partial"-mode GIF where frames update a region of a different size to the entire image?
             If so, we need to construct the new frame by pasting it on top of the preceding frames.
@@ -113,11 +113,13 @@ def getFrames(im):
         pass
 
 
-def processImage(path, reshape_to_vgg=False):
+def processImage(path, reshape_to_vgg=False, image_limit=None):
     im = Image.open(path)
     frames = []
     for (i, frame) in enumerate(getFrames(im)):
         #print("saving %s frame %d, %s %s" % (path, i, im.size, im.tile))
+        if image_limit and i == image_limit:
+            break
         if reshape_to_vgg:
             frames.append(
                 imresize(np.asarray(frame)[:,:,[0,1,2]],[224,224,3]))
