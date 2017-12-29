@@ -3,6 +3,7 @@ import numpy as np
 import urllib
 import json
 from scipy.misc import imresize
+import bcolz
 
 
 # sudo pip install http://effbot.org/media/downloads/Imaging-1.1.7.tar.gz
@@ -127,3 +128,72 @@ def processImage(path, reshape_to_vgg=False, image_limit=None):
             frames.append(np.asarray(frame))
         #frame.save('%s-%d.png' % (''.join(os.path.basename(path).split('.')[:-1]), i), 'PNG')
     return np.array(frames)
+
+
+class Dataset(object):
+    def __init__(self, root_dir=None):
+        if not root_dir:
+            raise ValueError('Please specify a data location.')
+        self.root_dir = root_dir 
+        self.has_data = False
+        self._remaining = None
+        self._update()
+
+    def add(self, data_arr):
+        if self.has_data:
+            self._append(data_arr)
+        else:
+            self._create(data_arr)
+            
+    def _create(self, data_arr):
+        try:
+            self.data = bcolz.carray(data_arr, rootdir=self.root_dir)
+            self.data.flush()
+            self.has_data=True
+        except:
+            raise
+            
+    def _update(self):
+        try:
+            self.data = bcolz.carray(rootdir=self.root_dir)
+            self.has_data=True
+        except IOError as err:
+            self.has_data = False
+            # print '[ERROR] There is no data in %s.'%(self.root_dir)
+            
+    def _append(self, data_arr):
+        self._update()
+        self.data.append(data_arr)
+        self.data.flush()
+    # TODO(tanozaslan) Change keyword replace, it is confusing with numpy build in
+    # function.
+    def reset_batch(self):
+        self._remaining = None
+        
+    def get_random_batch(self, batch_size=10, replace=True):
+        if batch_size > self.data.shape[0]:
+                raise ValueError('Batch size cannot be bigger than data size.')
+        data_size = self.data.shape[0]
+        vector_len = self.data.shape[1]
+        if replace:
+            batch_idxs = np.random.choice(data_size,batch_size,replace=False)
+        else:
+            if not self._remaining:
+                self._remaining = range(data_size)
+            batch_idxs = []
+            if len(self._remaining) < batch_size and len(self._remaining) > 0:
+                batch_idxs = self._remaining
+                np.random.shuffle(batch_idxs)
+                self._remaining = []
+            else:
+                for _ in range(batch_size):
+                    batch_idx = np.random.choice(range(len(self._remaining)),
+                                                 size=[1],
+                                                 replace=False)
+                    batch_idxs.append(self._remaining.pop(batch_idx))
+            if len(self._remaining) == 0:
+                self.reset_batch()
+                
+        data = self.data[batch_idxs,:,0:vector_len-1]
+        target = self.data[batch_idxs,:,vector_len-1:vector_len]
+        return data,target    
