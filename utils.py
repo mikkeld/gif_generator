@@ -118,7 +118,6 @@ def processImage(path, reshape_to_vgg=False, image_limit=None):
     im = Image.open(path)
     frames = []
     for (i, frame) in enumerate(getFrames(im)):
-        #print("saving %s frame %d, %s %s" % (path, i, im.size, im.tile))
         if image_limit and i == image_limit:
             break
         if reshape_to_vgg:
@@ -131,6 +130,7 @@ def processImage(path, reshape_to_vgg=False, image_limit=None):
 
 
 class Dataset(object):
+    """Data management class."""
     def __init__(self, root_dir=None):
         if not root_dir:
             raise ValueError('Please specify a data location.')
@@ -171,19 +171,27 @@ class Dataset(object):
         self._remaining = None
         
     def get_random_batch(self, batch_size=10, replace=True):
+        """Gives a random batch.
+        Args:
+            batch_size(int): number of examples in each batch.
+            replace (boolean): If True, in each iteration gives a random batch.
+                If False, iterated over the dataset, does not repeat an example
+                until finishes one epoch. Last batch might be smaller than batch_size
+                if batch_size is not perfect divider of number of examples in the
+                dataset.
+        """
         if batch_size > self.data.shape[0]:
                 raise ValueError('Batch size cannot be bigger than data size.')
         data_size = self.data.shape[0]
         vector_len = self.data.shape[1]
         if replace:
-            batch_idxs = np.random.choice(data_size,batch_size,replace=False)
+            batch_idxs = np.random.choice(data_size, batch_size, replace=False)
         else:
             if not self._remaining:
                 self._remaining = range(data_size)
             batch_idxs = []
             if len(self._remaining) < batch_size and len(self._remaining) > 0:
                 batch_idxs = self._remaining
-                np.random.shuffle(batch_idxs)
                 self._remaining = []
             else:
                 for _ in range(batch_size):
@@ -193,7 +201,7 @@ class Dataset(object):
                     batch_idxs.append(self._remaining.pop(batch_idx))
             if len(self._remaining) == 0:
                 self.reset_batch()
-                
+        np.random.shuffle(batch_idxs)        
         data = self.data[batch_idxs,:,0:vector_len-1]
         target = self.data[batch_idxs,:,vector_len-1:vector_len]
-        return data,target    
+        return data, target    
